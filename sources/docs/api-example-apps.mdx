@@ -1,0 +1,495 @@
+---
+title: API Example Apps
+sidebarTitle: API Example Apps
+public: true
+---
+
+These open source example apps demonstrate integrating the Halliday API directly into an app to enable fiat onramping, cross-chain swaps, payment retries, and processing address withdrawals.
+
+For more rapid integrations that use the Halliday SDK widget with a whitelabel user interface see [Payments SDK Example Apps](/pages/payments-sdk-example-apps).
+
+## Plain JavaScript API Examples
+
+The following open source example app code demonstrates how to implement [fiat onramps](/pages/api-example-apps#fiat-onramps-via-api-using-javascript) and [cross-chain swaps](/pages/api-example-apps#cross-chain-swaps-via-api-using-javascript) using the Halliday API.
+
+There are also API examples shown to handle [withdrawals](/pages/api-example-apps#withdraw-stuck-assets-with-the-api-using-javascript) and [retries](/pages/api-example-apps#retry-incomplete-payments-with-the-api-using-javascript) for payments that have failed to complete.
+
+- [Plain JavaScript app example repository](https://github.com/HallidayInc/HallidayPaymentsApiExamples)
+
+### Fiat onramps via API using JavaScript
+
+This [example app](https://github.com/HallidayInc/HallidayPaymentsApiExamples) shows how to build a fiat-to-crypto onramp, with a custom user interface, using the Halliday Payments API.
+
+<div style={{width: "100%", display: "flex", justifyContent: "center" }}>
+  <img src="/public/img/api-onramp-custom-ui.png" />
+</div>
+
+In the example, a user would be able to onramp directly to MEGA on MegaETH with a provider like Stripe.
+
+The app allows a user to connect their MegaETH wallet and the amount of USD they wish to spend.
+
+Using JavaScript, the app fetches a collection of quotes from the API and displays the best price available with each provider, as well as the total amount of onramp fees.
+
+```js
+// From getQuote function
+
+const res = await fetch('https://v2.prod.halliday.xyz/payments/quotes', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + HALLIDAY_API_KEY,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    request: {
+      kind: 'FIXED_INPUT',
+      fixed_input_amount: {
+        asset: inputAsset,
+        amount: inputAmount,
+      },
+      output_asset: outputAsset,
+    },
+    price_currency: 'usd',
+    onramps,
+    onramp_methods: fiatOnrampPayInMethods,
+    customer_geolocation: { alpha3_country_code: 'USA' }
+  }),
+});
+```
+
+Once the user selects a quote and destination address in the user interface, clicking or tapping the Continue button confirms the quote with the API.
+
+```js
+// From acceptQuote function
+
+const res = await fetch('https://v2.prod.halliday.xyz/payments/confirm', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + HALLIDAY_API_KEY,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    payment_id: selectedQuote.paymentId,
+    state_token: selectedQuote.stateToken,
+    owner_address: destinationAddress,
+    destination_address: destinationAddress
+  })
+});
+```
+
+If the payment output is >= $300 USD and the owner address has not been verified, the confirm response will include a `USER_VERIFY` next instruction. The user must sign the verification payloads before proceeding. A `while` loop handles up to two verification round-trips (owner verification followed by withdrawal simulation for large payments).
+
+```js
+// From onContinueButtonClick function
+
+let confirmResult = await acceptQuote();
+const paymentId = confirmResult.payment_id;
+
+// Handle user verification if required (>= $300 owner verify, >= $1M withdrawal sim)
+// Loop to handle up to two verification round-trips
+while (confirmResult.next_instruction?.type === 'USER_VERIFY') {
+  const { verification_token, verifications } = confirmResult.next_instruction;
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner();
+
+  const signatures = await Promise.all(
+    verifications.map(async (v) => {
+      let signature;
+      if (v.signature_type === 'EIP712') {
+        const typedData = JSON.parse(v.payload);
+        const { EIP712Domain, ...types } = typedData.types;
+        signature = await signer.signTypedData(typedData.domain, types, typedData.message);
+      } else {
+        signature = await signer.signMessage(v.payload);
+      }
+      return { reason: v.reason, signature_type: v.signature_type, signature };
+    })
+  );
+
+  // Submit verification signatures to confirm endpoint
+  const verifyRes = await fetch('https://v2.prod.halliday.xyz/payments/confirm', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + HALLIDAY_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ verification_token, signatures })
+  });
+
+  if (verifyRes.status === 409) {
+    break; // Already confirmed — treat as success
+  } else if (verifyRes.status === 400) {
+    alert('Quote expired. Please try again.');
+    return;
+  } else if (verifyRes.status === 401) {
+    console.warn('Signature verification failed, retrying...');
+    continue;
+  }
+
+  confirmResult = await verifyRes.json();
+}
+
+const onrampUrl = confirmResult.next_instruction.funding_page_url;
+```
+
+Next, the payment provider's checkout page is shown to the user. This is where the user would input their credit or debit card information for the transaction.
+
+```js
+paymentStatusInterval = setInterval(async () => {
+  console.log('payment status:', paymentId, await getPaymentStatus(paymentId));
+}, 5000);
+
+continueButton.classList.remove('loading');
+
+onrampIframe.src = onrampUrl;
+```
+
+Once the checkout is completed, the payment workflow begins. The app polls the payment status endpoint and shows the current status of the payment in the user interface.
+
+```js
+// From getPaymentStatus function
+
+const res = await fetch(`https://v2.prod.halliday.xyz/payments?payment_id=${paymentId}`, {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer ' + HALLIDAY_API_KEY,
+    'Content-Type': 'application/json'
+  },
+});
+```
+
+This example **does not show** an implementation of a recovery flow if the payment fails midway onchain. In the event a payment does not complete, a user can recover it by connecting the **owner** wallet on this page: `https://app.halliday.xyz/funding/${payment_id}`.
+
+### Cross-chain swaps via API using JavaScript
+
+This [example app](https://github.com/HallidayInc/HallidayPaymentsApiExamples) shows how to build a cross-chain swap app, with a custom user interface, using the Halliday Payments API.
+
+<div style={{width: "100%", display: "flex", justifyContent: "center" }}>
+  <img src="/public/img/api-swap-custom-ui.png" />
+</div>
+
+In the example, a user would be able to swap from USDC on Base to MEGA on MegaETH using the Halliday Payments API and their own wallet.
+
+The app allows a user to connect their wallet and input the amount of USDC on Base that they wish to spend.
+
+Using JavaScript, the app fetches a collection of quotes from the API and displays the best price available and the total amount of fees.
+
+```js
+// From getQuote function
+
+const res = await fetch('https://v2.prod.halliday.xyz/payments/quotes', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + HALLIDAY_API_KEY,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    request: {
+      kind: 'FIXED_INPUT',
+      fixed_input_amount: {
+        asset: inputAsset,
+        amount: inputAmount
+      },
+      output_asset: outputAsset
+    },
+    price_currency: 'USD'
+  })
+});
+```
+
+Once the user approves the quote, it is confirmed using the API.
+
+```js
+const requestBody = {
+  payment_id: quote.paymentId,
+  state_token: quote.stateToken,
+  owner_address: userAddress,
+  destination_address: userAddress
+};
+
+const res = await fetch('https://v2.prod.halliday.xyz/payments/confirm', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + HALLIDAY_API_KEY,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(requestBody)
+});
+
+const confirmedPayment = await res.json();
+```
+
+If the payment output is >= $300 USD and the owner address has not been verified, the confirm response will include a `USER_VERIFY` next instruction. The user must sign the verification payloads before proceeding. A `while` loop handles up to two verification round-trips (owner verification followed by withdrawal simulation for large payments).
+
+```js
+// Handle user verification if required (>= $300 owner verify, >= $1M withdrawal sim)
+// Loop to handle up to two verification round-trips
+let swapData = confirmedPayment;
+
+while (swapData?.next_instruction?.type === 'USER_VERIFY') {
+  const { verification_token, verifications } = swapData.next_instruction;
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner();
+
+  const signatures = await Promise.all(
+    verifications.map(async (v) => {
+      let signature;
+      if (v.signature_type === 'EIP712') {
+        const typedData = JSON.parse(v.payload);
+        const { EIP712Domain, ...types } = typedData.types;
+        signature = await signer.signTypedData(typedData.domain, types, typedData.message);
+      } else {
+        signature = await signer.signMessage(v.payload);
+      }
+      return { reason: v.reason, signature_type: v.signature_type, signature };
+    })
+  );
+
+  // Submit verification signatures to confirm endpoint
+  const verifyRes = await fetch('https://v2.prod.halliday.xyz/payments/confirm', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + HALLIDAY_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ verification_token, signatures })
+  });
+
+  if (verifyRes.status === 409) {
+    break; // Already confirmed — treat as success
+  } else if (verifyRes.status === 400) {
+    alert('Quote expired. Please try again.');
+    return;
+  } else if (verifyRes.status === 401) {
+    console.warn('Signature verification failed, retrying...');
+    continue;
+  }
+
+  swapData = await verifyRes.json();
+}
+```
+
+Next, the user can sign transactions with their wallet to fund the workflow.
+
+<div style={{width: "100%", display: "flex", justifyContent: "center" }}>
+  <img src="/public/img/api-swap-custom-ui-confirmation-screen.png" />
+</div>
+
+The latest status of the cross-chain swap is fetched from the API and displayed in the UI.
+
+```js
+const res = await fetch('https://v2.prod.halliday.xyz/payments' +
+  `?payment_id=${paymentId}`, {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer ' + HALLIDAY_API_KEY,
+    'Content-Type': 'application/json'
+  }
+});
+```
+
+The next section shows how to implement payment recoveries directly via API. Alternatively, payments can be recovered on the following page by connecting the payment's **owner address** wallet `https://app.halliday.xyz/funding/${payment_id}`.
+
+### Withdraw stuck assets with the API using JavaScript
+
+In the event that a payment begins its onchain steps and fails to complete them, or assets are sent to a processing address in which the payment is expired, a user can sign a transaction to withdraw the tokens to any address.
+
+The owner address, which is usually the user's wallet, is the sole controller of assets in the processing addresses.
+
+An overview and details on the withdrawal process are explained on the [API Recoveries & Errors page](/pages/api-error-recovery-withdrawal#withdrawals).
+
+<div style={{width: "100%", display: "flex", justifyContent: "center" }}>
+  <img src="/public/img/api-withdrawal-custom-ui.png" />
+</div>
+
+The app uses the history API endpoint to fetch payments for the wallet address.
+
+```js
+async function getWalletPaymentHistory(address, paginationKey) {
+  const params = new URLSearchParams({
+    category: 'ALL',
+    owner_address: address,
+    ...(paginationKey && { pagination_key: paginationKey })
+  });
+
+  const res = await fetch(`https://v2.prod.halliday.xyz/payments/history?${params}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + HALLIDAY_API_KEY,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  // Note that only payments initialized with this HALLIDAY_API_KEY will be returned
+  const data = await res.json();
+  return data;
+}
+```
+
+Here is example code to get the entire history of payments created using the API.
+
+```js
+const payments = [];
+let paginationKey;
+do {
+  const history = await getWalletPaymentHistory(_userAddress, paginationKey);
+  if (history.next_pagination_key) {
+    paginationKey = history.next_pagination_key;
+  } else {
+    paginationKey = undefined;
+  }
+  payments.push(...history.payment_statuses);
+} while (paginationKey)
+```
+
+Next, after filtering out properly completed payments, the balance of failed or expired payments is queried using the API one by one. This endpoint will get the current token balances for all of the payment's processing addresses on the relevant chains and return the data in the response.
+
+```js
+  async function getProcessingAddressBalances(paymentId) {
+    try {
+      const res = await fetch(`https://v2.prod.halliday.xyz/payments/balances`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + HALLIDAY_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ payment_id: paymentId })
+      });
+
+      const data = await res.json();
+      return data;
+    } catch (e) {
+      console.error('getProcessingAddressBalances error', e);
+    }
+  }
+```
+
+Relevant payment information is rendered in the UI for the user. The user can tap or click buttons to initialize the withdrawal flow for each individual stuck token balance.
+
+Initializing the withdrawal flow has three steps:
+
+1. Get the EIP-712 data from the API (`getTypedData`) which is used to sign a transaction to withdraw the token from the processing address.
+2. The transaction is signed (`signTypedData`) with the user wallet using Ethers on the client.
+3. The signed transaction data is then sent to the API (`confirmWithdrawal`) to confirm the withdrawal and execute it onchain. The API returns the onchain transaction hash in the response body.
+
+```js
+withdrawButton.addEventListener('click', async () => {
+  withdrawButton.classList.add('loading');
+
+  // Fetch the withdraw signature data from the API
+  const withdrawToAddress = userAddress; // user's connected wallet
+  const typedDataToSign = await getTypedData(withdrawToAddress, paymentId, balance.token, balance.value.amount);
+  const { domain, types, message } = JSON.parse(typedDataToSign.withdraw_authorization);
+  delete types.EIP712Domain;
+
+  // Sign the withdraw transaction using Ethers
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner();
+  const signature = await signer.signTypedData(domain, types, message);
+
+  // Send signature to API to be posted onchain
+  const txHash = await confirmWithdrawal(withdrawToAddress, paymentId, balance.token, balance.value.amount, signature);
+
+  // Show the resulting withdraw transaction on the proper block explorer
+  const chain = balance.token.split(':')[0];
+  const { explorer } = supportedChains[chain];
+  const link = item.querySelector('a');
+  link.setAttribute('href', `${explorer}tx/${txHash}`);
+  link.classList.remove('hidden');
+
+  withdrawButton.disabled = true;
+  withdrawButton.classList.remove('loading');
+});
+```
+
+Lastly, the transaction with the final transfer of tokens to the withdrawal address is rendered as a blockchain explorer link for the user to tap or click.
+
+### Retry incomplete payments with the API using JavaScript
+
+In the event an onramp or swap is funded but fails to complete, a retry can be attempted using assets lingering in a processing address. A retry requires a new quote which uses the lingering assets as the input token amount. Think of retries as a withdrawal of an old payment to deposit into a new payment.
+
+The owner address is the sole controller of assets in the processing addresses. The user wallet must sign a transaction to initialize the retry.
+
+Payment retries are further explained on the [API Recoveries & Errors page](/pages/api-error-recovery-withdrawal#retry-a-payment).
+
+<div style={{width: "100%", display: "flex", justifyContent: "center" }}>
+  <img src="/public/img/api-payment-retry-custom-ui.png" />
+</div>
+
+The retry example uses the same history API endpoint to fetch payments for the wallet address as the above withdraw example (see `getWalletPaymentHistory` above).
+
+Also the same endpoint to fetch current processing address balances is used (see `getProcessingAddressBalances` above).
+
+Using the balances response, a quote is made for bridging and swapping with the processing address balance as the input. This is the same quotes endpoint used in onramps and swaps. See the `getQuote` function in the cross-chain swaps example above.
+
+```js
+const balance = balances.balance_results[i];
+const _token = balance.token;
+const _amount = +balance.value.amount;
+if (_amount === 0) {
+  continue;
+}
+
+const quoteResult = await getQuote(balance.value.amount, _token, outputAsset, paymentId);
+
+if (quoteResult.quotes.length === 0) {
+  alert('Retry not possible. Try withdrawal.');
+  continue;
+}
+```
+
+Once the user accepts a quote available to retry the payment, the following four steps orchestrate a retry:
+
+1. Use the API endpoint to accept the new quote (see `acceptQuote`). This is the same endpoint used to accept quotes in onramps and swaps.
+2. Fetch the withdrawal signature data from the API (see `getTypedData`). This transaction will transfer tokens from the **old** payment to the **new** payment once it is executed onchain. This is the same gas-sponsored transaction concept explained in the above **withdraw** example.
+3. The transaction is signed (`signTypedData`) with the user wallet using Ethers on the client.
+4. The signed transaction data is then sent to the API (`confirmWithdrawal`) to confirm the token transfer from the old payment to the new payment. The API then executes this transaction onchain covering all of the blockchain gas costs.
+
+```js
+// Accept the retry quote
+const acceptQuoteRequest = await acceptQuote(newPaymentId, newStateToken);
+const statusElement = document.getElementById('status');
+statusElement.innerText = `Status: ${acceptQuoteRequest.status}...`;
+
+// Fetch the retry signature data from the API
+const withdrawToAddress = acceptQuoteRequest.next_instruction.deposit_info[0].deposit_address; // new quoted payment's deposit address
+const typedDataToSign = await getTypedData(withdrawToAddress, paymentId, balance.token, balance.value.amount);
+const { domain, types, message } = JSON.parse(typedDataToSign.withdraw_authorization);
+delete types.EIP712Domain;
+
+// Sign the retry transfer transaction using Ethers
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+const signature = await signer.signTypedData(domain, types, message);
+
+// Send signature to API to be posted onchain
+await confirmWithdrawal(withdrawToAddress, paymentId, balance.token, balance.value.amount, signature);
+```
+The new payment ID can subsequently be tracked. The new payment will reach the `COMPLETED` state once the output tokens have reached the destination address.
+
+## React API Examples
+
+The following open source example app demonstrates building onramps, cross-chain swaps, payment retries, and processing address withdrawals using the Halliday API directly by connecting a user's EIP-1193 wallet like MetaMask or Rabby.
+
+- [Halliday API Examples using React.js](https://github.com/HallidayInc/HallidayPaymentsApiExamplesReact)
+
+## React API Examples with Dynamic Embedded Wallets
+
+The following open source example app demonstrates building onramps, cross-chain swaps, payment retries, and processing address withdrawals using the Halliday API directly with a Dynamic embedded wallet.
+
+- [Halliday API Examples with Dynamic Embedded Wallets and React.js](https://github.com/HallidayInc/HallidayApiDynamicExamplesWagmi)
+
+
+<div style={{width: "100%", display: "flex", justifyContent: "center" }}>
+  <img src="/public/img/dynamic-wallet-react-halliday-api-swap.png" />
+</div>
+
+## React API Examples with Privy Wallet
+
+The following open source example app demonstrates building onramps, cross-chain swaps, payment retries, and processing address withdrawals using the Halliday API directly with a Privy connected wallet.
+
+- [Halliday API Examples with Privy Wallet and React.js](https://github.com/HallidayInc/HallidayApiPrivyReactExamples)
+
+
+<div style={{width: "100%", display: "flex", justifyContent: "center" }}>
+  <img src="/public/img/privy-wallet-react-halliday-api-onramp.png" />
+</div>

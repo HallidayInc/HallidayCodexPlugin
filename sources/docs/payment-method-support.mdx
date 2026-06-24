@@ -1,0 +1,32 @@
+---
+title: Supported Payment Methods
+sidebarTitle: Supported Payment Methods
+public: true
+---
+
+Halliday supports crypto assets as input and output for payments. Supported crypto assets can be found by querying the `/assets` [endpoint of the API](/api-reference/assets/get-asset-details).
+
+Get an API key for free in the [Halliday Dashboard](https://dashboard.halliday.xyz/).
+
+Specific payment [route support from input asset to output asset](https://docs.halliday.xyz/api-reference/assets/get-available-input-assets-for-a-given-output-asset) can also be checked using the API.
+
+## Fiat Onramp Support
+
+Fiat onramp support is enabled by several onramp providers. The following information is based on payment method support information collected from provider documentation. Note that Crypto.com onramp support is currently in beta.
+
+| Country | Currency | Payment Methods | Providers |
+|---------|----------|-----------------|-----------|
+| Global (Non-Sanctioned Countries) | USD | Card, Apple Pay, Google Pay | MoonPay, Transak, Binance, RampNetwork, Crypto.com |
+| **Additional Coverage** | | | |
+| United States | USD | ACH, PayPal, Venmo | Global Providers + Stripe |
+| Canada | CAD | Card | Coinbase |
+| Mexico | MXN | Card | Coinbase, Binance |
+| Brazil | BRL | PIX (instant bank) | Banxa |
+| United Kingdom | GBP | Card | Coinbase, Binance |
+| Eurozone | EUR | SEPA (bank), Card, Apple Pay | Coinbase, Banxa, Binance, RampNetwork |
+| Japan | JPY | Card | Binance |
+| Hong Kong | HKD | Card | Coinbase, Binance |
+| Taiwan | TWD | Card | Coinbase, Binance |
+| Singapore | SGD | Card | Coinbase |
+| Australia | AUD | Card | Coinbase |
+| Vietnam | VND | Card | Binance |

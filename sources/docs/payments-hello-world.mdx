@@ -1,0 +1,121 @@
+---
+title: Payments Hello World
+sidebarTitle: Payments Hello World
+public: true
+---
+The fastest way to implement Halliday Payments is by utilizing the widget user interface.
+
+## Try the Halliday Payments SDK Widget
+
+Following this guide, or the [Widget Documentation](/pages/payments-sdk-docs) guide will result in an onramp expeirence like the following.
+
+Try out onramping to an external wallet with this button:
+
+import { OnrampWithWalletConnector } from '/snippets/OnrampWithWalletConnector.jsx';
+
+<OnrampWithWalletConnector />
+
+### Integrate Halliday Payments
+
+Follow these steps to integrate Halliday Payments in just a few minutes.
+
+<Steps>
+<Step title="Obtain API Keys">
+<Note>
+To get set up with API access for Halliday Payments, get a free API key at [dashboard.halliday.xyz](https://dashboard.halliday.xyz/).
+</Note>
+</Step>
+
+<Step title="Integrate">
+
+First, install the Halliday Payments SDK into a web project.
+
+<Tabs>
+  <Tab title="npm">
+    ```shell copy
+    npm install @halliday-sdk/payments
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```shell copy
+    yarn add @halliday-sdk/payments
+    ```
+  </Tab>
+  <Tab title="HTML">
+    ```html copy
+    <script src="https://cdn.jsdelivr.net/npm/@halliday-sdk/payments@latest/dist/paymentsWidget/index.umd.min.js"></script>
+    ```
+  </Tab>
+</Tabs>
+
+Next, integrate Halliday Payments into an existing application with a few lines of code. This example is in a React.js project with [Wagmi](https://wagmi.sh/).
+
+<Tabs>
+  <Tab title="React">
+    ```tsx copy
+    import { useEffect } from "react";
+    import { openHallidayPayments } from "@halliday-sdk/payments";
+    import { connectWalletClient } from "@halliday-sdk/payments/viem";
+    import { useAccount, useWalletClient } from "wagmi";
+
+    export default function App() {
+      const { address, isConnected } = useAccount();
+      const { data: walletClient, isSuccess } = useWalletClient();
+
+      useEffect(() => {
+        if (!isConnected || !isSuccess || !walletClient || !address) return;
+
+        const userWallet = connectWalletClient(() => walletClient);
+
+        openHallidayPayments({
+          apiKey: HALLIDAY_API_KEY,
+          outputs: ["base:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"],
+          targetElementId: "halliday",
+          destinationAddress: address,
+          userWallet,
+        });
+      }, [isConnected, isSuccess, walletClient, address]);
+
+      return <div id="halliday" />;
+    }
+    ```
+  </Tab>
+  <Tab title="HTML">
+    ```html copy
+    <html>
+    <body>
+      <button id="connect-wallet">Connect Wallet</button>
+    </body>
+    <script src="https://cdn.jsdelivr.net/npm/@halliday-sdk/payments@latest/dist/paymentsWidget/index.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@halliday-sdk/payments@latest/dist/paymentsWidget/ethers/index.umd.min.js"></script>
+    <script>
+      window.connectSigner = window.ethers.connectSigner;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+    <script>
+      document.getElementById('connect-wallet').addEventListener('click', async () => {
+        window.ethereum = window.ethereum || window.phantom.ethereum;
+        const [address] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+        const userWallet = connectSigner(() =>
+          new ethers.BrowserProvider(window.ethereum).getSigner(),
+        );
+
+        hallidayPayments.openHallidayPayments({
+          apiKey: HALLIDAY_PUBLIC_API_KEY,
+          // USDC on Base
+          outputs: ['base:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'],
+          userWallet,
+          destinationAddress: address,
+        });
+      });
+    </script>
+    </html>
+    ```
+  </Tab>
+</Tabs>
+
+Run the app page and try onramping or swapping tokens with the newly implemented Halliday Payments Payments Widget. Try it now using the **button** above.
+
+</Step>
+</Steps>

@@ -1,0 +1,39 @@
+{
+  "name": "halliday-payments",
+  "version": "1.0.1",
+  "description": "Halliday Payments integration for crypto deposits, fiat-to-crypto onramps, and cross-chain swaps.",
+  "author": {
+    "name": "Halliday Inc.",
+    "email": "support@halliday.xyz",
+    "url": "https://halliday.xyz"
+  },
+  "homepage": "https://docs.halliday.xyz",
+  "keywords": [
+    "halliday",
+    "payments",
+    "crypto",
+    "onramp",
+    "cross-chain"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Halliday Payments",
+    "shortDescription": "Integrate Halliday Payments from Codex.",
+    "longDescription": "Halliday Payments helps developers add crypto deposits, fiat-to-crypto onramps, and cross-chain swaps with bundled SDK, API, example repository, compliance, and payment lookup guidance.",
+    "developerName": "Halliday Inc.",
+    "category": "Productivity",
+    "capabilities": [
+      "SDK integration guidance",
+      "API integration guidance",
+      "Example repository setup",
+      "Payment status lookup"
+    ],
+    "websiteURL": "https://halliday.xyz",
+    "brandColor": "#2563EB",
+    "defaultPrompt": [
+      "How do I add the Halliday SDK widget to my app?",
+      "Check my Halliday integration.",
+      "Look up a Halliday payment by ID."
+    ]
+  }
+}

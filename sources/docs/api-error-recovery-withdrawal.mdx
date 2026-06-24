@@ -1,0 +1,133 @@
+---
+title: Payment Recoveries API Errors
+sidebarTitle: API Recoveries & Errors
+public: true
+---
+
+In the event that a payment fails to complete there are several options for a user to recover their assets.
+
+### Causes of payment interruptions
+
+Crypto deposits require orchestration of several independent protocols like bridges, DEXs, blockchains, onramp providers and more. Mid-workflow, an asset's price could change significantly, a fee could increase beyond the bounds of the quote, an onramp could experience an unexpected delay or other unforseen setbacks.
+
+Halliday Payments was built to be robust under all of these conditions within the ever-growing ecosystem of onchain protocols.
+
+The Halliday payments [OTWs](/pages/otw) are **self-custodial**. Users are always the sole controllers of these addresses through their wallet.
+
+## Recoveries
+
+Halliday Payments provides two options for recovering assets within an interrupted payment.
+
+### Retry a payment
+
+An interrupted payment can be retried with a new quote. The new output amount may differ from the original quote based on asset price changes.
+
+If a payment expires, and has not been funded, it is safe to abandon it and create a whole new payment.
+
+Effectively, a new payment is created and then funded using the interrupted payment by transferring tokens from the old deposit address to the new deposit address using an EIP-712 signature. An [example of this signature request](#example-withdrawal-signature-request) is shown below.
+
+**Retry a payment using the API**
+
+- A funded payment is not completing.
+- Query the [balances API endpoint](/api-reference/payments/get-wallet-balances) (`POST /payments/balances`) and pass the incomplete payment ID which we will call failed `payment_id`. This returns the deposit address (`address`), the balance, and the `account` type. Check that the balance is greater than zero. If so, a recovery can be performed. Entries with `value.kind` of `error` indicate a balance lookup failure and should be skipped. When displaying the estimated output to the user, use `amount - withdrawal_fee` (the net amount). When calling the withdraw endpoint, use the full `amount`.
+- [Get new quotes](/api-reference/payments/get-payment-quotes) using `POST /payments/quotes`. Provide the failed `payment_id` as `parent_payment_id` in the request body.
+- Once the user selects a quote, [confirm the new quote](/api-reference/payments/confirm-a-payment) using `POST /payments/confirm`. To do this, pass the new quote's payment ID, which we will call new `payment_id`, to the confirm endpoint. Also, `state_token`, `owner_address`, and `destination_address` are required parameters for the confirm endpoint.
+- Next call the [withdraw endpoint](/api-reference/payments/return-funds-to-owner-or-retry-payment) (`POST /payments/withdraw`) with the parameters:
+  - `payment_id`: The failed payment's ID.
+  - `token_amounts`: The returned amount of token from the prior `POST /payments/balances` endpoint call.
+  - `recipient_address`: The address of the new payment's deposit address.
+  - `withdraw_account`: The `withdraw_account` value from the balance result (`INTENT` or `SPW`).
+- The response includes a `signature_type` field (`EIP712` or `EIP191`) and a `withdraw_authorization` string. The owner wallet must sign this authorization:
+  - If `signature_type` is `EIP712`: Parse `withdraw_authorization` as JSON and sign using `signTypedData`.
+  - If `signature_type` is `EIP191`: Sign the `withdraw_authorization` string directly using `signMessage`.
+- Next call the [confirm withdraw endpoint](/api-reference/payments/confirm-withdrawal-request) (`POST /payments/withdraw/confirm`) with the same parameters passed to the prior API call along with the newly created `owner_signature`, `withdraw_account`, and `payload` (set to the `withdraw_authorization` string from the withdraw response). The withdrawal will be executed onchain automatically and transfer the assets from the old deposit address to the new one.
+
+### Withdrawals
+
+Assets lingering in a deposit address can be withdrawn to any address specified in a withdrawal signature created by the owner wallet. In some situations, this may result in the asset being moved to a user-controlled wallet on a different chain than the intended destination.
+
+**Withdrawal steps using the API**
+
+- A funded payment is not completing.
+- Query the [balances API endpoint](/api-reference/payments/get-wallet-balances) (`POST /payments/balances`) and pass the incomplete payment ID which we will call failed `payment_id`. This returns the deposit address (`address`), the balance, and the `account` type. Check that the balance is greater than zero. If so, a recovery can be performed. Entries with `value.kind` of `error` indicate a balance lookup failure and should be skipped. When displaying the estimated output to the user, use `amount - withdrawal_fee` (the net amount). When calling the withdraw endpoint, use the full `amount`.
+- Next call the [withdraw endpoint](/api-reference/payments/return-funds-to-owner-or-retry-payment) (`POST /payments/withdraw`) with the parameters:
+  - `payment_id`: The failed payment's ID.
+  - `token_amounts`: The returned amount of token from the prior `POST /payments/balances` endpoint call.
+  - `recipient_address`: The address to withdraw the tokens to, usually the owner's wallet.
+  - `withdraw_account`: The `withdraw_account` value from the balance result (`INTENT` or `SPW`).
+- The response includes a `signature_type` field (`EIP712` or `EIP191`) and a `withdraw_authorization` string. The owner wallet must sign this authorization:
+  - If `signature_type` is `EIP712`: Parse `withdraw_authorization` as JSON and sign using `signTypedData`.
+  - If `signature_type` is `EIP191`: Sign the `withdraw_authorization` string directly using `signMessage`.
+- Next call the [confirm withdraw endpoint](/api-reference/payments/confirm-withdrawal-request) (`POST /payments/withdraw/confirm`) with the same parameters passed to the prior API call along with the newly created `owner_signature`, `withdraw_account`, and `payload` (set to the `withdraw_authorization` string from the withdraw response). This signature will be executed onchain automatically and transfer the assets.
+
+### Example Withdrawal Signature Request
+
+The `POST /payments/withdraw` endpoint returns a `signature_type` field indicating the required signature method. When `signature_type` is `EIP712`, the `withdraw_authorization` is a JSON string to parse and sign using `signTypedData`. When `signature_type` is `EIP191`, sign the `withdraw_authorization` string directly using `signMessage`.
+
+The following is an example EIP-712 withdrawal signature request on EVM chains, returned from the `POST /payments/withdraw` API endpoint.
+
+The owner of the payment will generate a signature using their private key in order to confirm a withdrawal.
+
+```json
+{
+  "domain": { "name": "Halliday Workflow Protocol", "version": "1" },
+  "types": {
+    "EIP712Domain": [ { "type": "string", "name": "name" }, { "type": "string", "name": "version" } ],
+    "Call": [ { "type": "address", "name": "target" }, { "type": "bytes", "name": "data" }, { "type": "uint256", "name": "value" } ],
+    "HallidayAccount": [ { "type": "string", "name": "description" }, { "type": "Call[]", "name": "actions" }, { "name": "nonce", "type": "uint256" }, { "type": "bytes32", "name": "signatory_declaration_hash" }, { "type": "uint256", "name": "chain_id" }, { "type": "bool", "name": "accept_blame" } ]
+  },
+  "primaryType": "HallidayAccount",
+  "message": {
+    "description": "Transfer 50 USDC on Base to address 0x...",
+    "actions": [
+      {
+        "target": "0xrecipient",
+        "data": "0xdata",
+        "value": "0"
+      }
+    ],
+    "nonce": "0",
+    "signatory_declaration_hash": "0x123...",
+    "chain_id": "8453",
+    "accept_blame": true
+  }
+}
+```
+
+### Recovery Implementation Options
+
+To implement withdrawals and retries using the API directly, see [API Example Apps](/pages/api-example-apps).
+
+Alternatively, payments can be recovered on the following page by connecting the payment's **owner address** wallet `https://app.halliday.xyz/funding/${payment_id}`.
+
+## API Errors
+
+The REST API returns formatted errors with a corresponding error code, such as 400 for bad request and 401 for unauthorized.
+
+**Example 401 response**
+
+```json
+{
+  "errors": [
+    {
+      "kind": "other",
+      "message": "Invalid public api key"
+    }
+  ]
+}
+```
+
+**Example 400 response**
+
+```json
+{
+  "errors": [
+    {
+      "kind": "other",
+      "message": "Must be a short alpha-numeric symbol"
+    }
+  ]
+}
+```
+
+The `GET /assets/available-inputs` and `GET /assets/available-outputs` endpoints will return bad request errors in the scenario that an unsupported asset address is passed as a parameter.

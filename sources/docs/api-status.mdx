@@ -1,0 +1,347 @@
+---
+title: Payment Funding & Status
+sidebarTitle: Status API
+public: true
+---
+
+The `GET /payments` [status endpoint](/api-reference/payments/get-payment-status) can be polled to retrieve the full scope and current status of a payment using its unique `payment_id`. This endpoint supports fiat onramps, centralized exchange withdrawals, and cross-chain swaps initiated through the API or the Payments SDK widget.
+
+During the payment lifecycle, the status response provides essential **funding information**. Once a payment is funded, the predefined onchain steps **execute automatically**.
+
+Note that the JSON response object returned by `GET /payments` and `POST /payments/confirm` share the same structure and both represent the payment’s current status.
+
+## Funding a payment
+
+A payment is initiated onchain once the OTW [deposit address](/pages/otw) on the specified network holds a token balance **greater than or equal to** the input amount set in the quote. Sending tokens to this deposit address is referred to as a **deposit**. Any address can perform the deposit to fund the payment.
+
+Once a fiat-to-crypto onramp, centralized exchange withdrawal, or cross-chain swap is confirmed using the `POST /payments/confirm` endpoint, the API returns a payment status object with a status of `PENDING` or `UNCONFIRMED`. If the status is `UNCONFIRMED`, the owner must complete verification before the payment can proceed (see [owner verification](#owner-verification-user_verify) below). Once a payment is pending, it can be funded. Funding must occur before the quote expires. The payment expires if it is not funded before the `initiate_fund_by` datetime detailed in the status object.
+
+### Funding an onramp vs funding a swap
+
+Fiat onramps are funded onchain **automatically** by the provider once a user completes the checkout on the provider's page.
+
+A swap must be funded by transferring tokens to the deposit address onchain. For most use cases of swaps, the user transfers the input token to the deposit address from their own wallet. However any wallet may fund a payment.
+
+Developers can find the specific details for funding a payment by viewing the `next_instruction` object.
+
+### Next instruction
+
+The JSON response object returned from the status and confirm endpoints contains a `next_instruction` object while the payment status is `PENDING` or `UNCONFIRMED`. This object details the next instruction required to execute the payment.
+
+**Type**
+
+The `next_instruction.type` value can be `ONRAMP` for fiat onramp payments, `TRANSFER_IN` for swaps, or `USER_VERIFY` when owner verification is required.
+
+**Funding page URL for fiat onramps**
+
+The `next_instruction.funding_page_url` value is a unique URL. The URL redirects to a fiat onramp provider's checkout page (i.e. Stripe, Moonpay). On this page, the user confirms their fiat payment information.
+
+**Deposit information**
+
+The `next_instruction.deposit_info` value is an array of objects. This information is used to fund a payment.
+
+- `deposit_token` The token to send to the deposit address in `${chain}:${token_address}` format.
+- `deposit_amount` The amount of the token to send to the deposit address.
+- `deposit_address` The onchain deposit address (OTW).
+- `deposit_chain` Name of the chain on which to perform the deposit.
+
+Example `next_instruction.deposit_info`:
+
+```json
+[{
+  "deposit_token": "base:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  "deposit_amount": "53.26",
+  "deposit_address": "0x39bd1CfcF898A3a3d1e6EFD33e1F65499e6326a9",
+  "deposit_chain": "base"
+}]
+```
+
+**Pitfalls**
+
+Note that EVM wallets have identical addresses on every EVM chain. The deposit is required to be done only on the chain specified in the deposit information.
+
+Depositing to the OTW address on the wrong chain will not execute a payment and is to be avoided.
+
+**Owner verification (USER_VERIFY)**
+
+When a payment output is \>= $300 USD and the owner address has not yet been verified, the `next_instruction.type` will be `USER_VERIFY` and the payment status will be `UNCONFIRMED`. The instruction contains a `verification_token` and a `verifications` array. Each entry in the array has a `reason` (`EVM_OWNER` or `EVM_WITHDRAWAL`), a `signature_type` (`EIP712`), and a `payload` string.
+
+Two verification thresholds apply:
+
+| Order value | Verification | Behavior |
+|---|---|---|
+| < $300 | None | Proceeds directly to funding |
+| >= $300 | `EVM_OWNER` | Skipped if the owner address has previously verified |
+| >= $1M | `EVM_WITHDRAWAL` | Always required, never skipped |
+
+For each verification entry, prompt the user to sign the `payload` using `signTypedData` based on the `signature_type`. Then construct a `ContinueConfirmPaymentRequest` with the `verification_token` and the signed `signatures` array, and submit it to `POST /payments/confirm`.
+
+Once an owner address has produced an `EVM_OWNER` signature, subsequent payments with that address will not require the signature again. `EVM_WITHDRAWAL` verification is always required when applicable and is never skipped.
+
+If the user abandons before completing verification, the payment is not persisted and a new quote must be requested.
+
+**Verification error handling**
+
+| Status code | Meaning | Action |
+|---|---|---|
+| 200 | Verification passed | Continue — `next_instruction` is now `TRANSFER_IN` or `ONRAMP` |
+| 400 | Quote expired or invalid input | Re-quote from scratch |
+| 401 | Signature verification failed | Retry with the same `USER_VERIFY` instruction |
+| 409 | Already confirmed | Treat as success |
+
+## Payment Statuses
+
+The `status` property in the JSON response object is a string indicating the present status of the payment. Each of the following statuses can be returned for an onramp or swap payment.
+
+### Pending
+
+The `PENDING` status is the inital state of a confirmed payment. This state indicates that the payment is ready to be funded.
+
+The specified onchain steps begin executing once the OTW (deposit address) is issued the proper amount of tokens on the proper chain.
+
+See [funding a payment](#funding-a-payment) above for more details and [funding examples](#funding-examples) below.
+
+### Unconfirmed
+
+The `UNCONFIRMED` status indicates that the payment requires owner verification before it can proceed. This occurs when the payment output is >= $300 USD and the owner address has not yet produced an EVM_OWNER signature. The response will include a `USER_VERIFY` next_instruction with payloads for the user to sign. Once verification is submitted via a `ContinueConfirmPaymentRequest` to `POST /payments/confirm`, the status transitions to `PENDING`.
+
+### Complete
+
+The `COMPLETE` status indicates that a payment has successfully reached the intended final onchain step detailed in the `route` object of the status response. There are no other possible states for the payment to change to once it has reached `COMPLETE`.
+
+For example, a user onramps from USD to MEGA on MegaETH. The payment status changes to `COMPLETE` as soon as the transaction to transfer MEGA tokens to the user's wallet address on MegaETH has been confirmed.
+
+A user will be shown the `COMPLETE` status in the Payments SDK widget transaction details only after the output tokens are in their wallet.
+
+### Failed
+
+The `FAILED` status indicates that a payment has failed to complete due to an onchain execution failure. Failed payments can be retried or assets in relevant OTW addresses can be withdrawn by the owner wallet using EIP712 signatures.
+
+### Expired
+
+The `EXPIRED` status indicates that the payment was not funded before the `initiate_fund_by` datetime detailed in the status response object.
+
+A payment can be safely abandoned if it becomes `EXPIRED`, before it is funded, in favor of a new quote. If an `EXPIRED` payment is funded, the `owner` wallet address can retry the payment with a new quote or withdraw the assets from the OTW to the `owner` address.
+
+Withdrawal requires creation of an EIP-712 signature which the API can use to execute the transfer.
+
+For more information on withdrawals and payment recoveries see the [Payment API Errors & Recoveries](/pages/api-error-recovery-withdrawal) guide.
+
+### Withdrawn
+
+The `WITHDRAWN` status indicates that the funding amount deposited to the OTW has been successfully transferred out of the deposit address following execution of a withdrawal request.
+
+In the scenario that a user accidentally funds a payment with an improper input token, and then withdraws it, the status will become `WITHDRAWN`. However, the user can subsequently fund the payment with the correct token, and the status will become `PENDING` once again. The payment can then execute as intended and eventually reach a `COMPLETE` status.
+
+### Tainted
+
+The `TAINTED` status indicates that an onchain address associated with a payment request is recognized as a sanctioned address. Tainted payments cannot be completed or retried.
+
+## Funding Examples
+
+Both fiat onramps and swaps are funded in the same manner. Each unique payment has a unique onchain deposit address that begins execution of the payment steps once it is adequately funded.
+
+Any subsequent onchain actions are performed automatically using predefined workflows. The user does not need to be mindful of gas tokens, bridges, or swaps that occur during the payment lifecycle, or take any other action in order for it to complete.
+
+The result of a payment is that a destination wallet address holds, at minimum, the quoted amount of a destination token.
+
+### Swap
+
+After the user indicates their input token amount, chooses a quote, and the payment is confirmed, the deposit can be performed.
+
+An app can prompt the user to transfer tokens in their wallet to the deposit address. Also, any funder wallet can perform the deposit.
+
+### Fiat onramp
+
+Just like a swap, the user indicates the amount that they want to spend, chooses a quote, and the funding process begins.
+
+The user provides payment details via the next instruction's `funding_page_url`.
+
+Once the checkout is completed, the onramp provider automatically funds the deposit address on the proper chain.
+
+## Payment transaction hash
+
+The structure of a Halliday Payment workflow contains several steps that occur in succession on one or more blockchains.
+
+The user will input fiat or crypto and expect that a different asset arrives in their wallet address within seconds. Usually a payment will undergo several intermediary steps like DEX swaps and bridging before completing.
+
+The final transfer step can be found publicly on a blockchain by its transaction hash.
+
+### Complete payment status
+
+Each individual Halliday Payment status object will contain the onchain transaction hash once the workflow has reached the `COMPLETE` step. The status object can be found using either of these two [Halliday API endpoints](https://docs.halliday.xyz/api-reference/).
+
+- `GET /payments` using the `payment_id` (UUID string) as a query parameter which returns a single status object.
+- `GET /payments/history` using the `owner_address` (wallet address string) as a query parameter, which returns a collection of status objects.
+
+### Get an onchain transaction hash
+
+Each status object in which the status is presently `COMPLETE` will include transaction hash strings among other data.
+
+Transaction hashes returned from the status API are shown as `tx_id` in `fulfilled.route` array objects of type `ONCHAIN_STEP` within `net_effect.consume` or `net_effect.produce` array objects. Not every step will have a transaction hash associated with it.
+
+The final `net_effect.produce` object in which the `account` is `DEST` will have a `tx_id` in which the output token is transferred to the destination address on the destination chain. Most commonly this is the end user's wallet address on the output token's chain.
+
+Here is a JavaScript example to fetch the transaction hash with the transfer of tokens to the user's wallet from a `COMPLETE` status object.
+
+```js
+const txHash = data.fulfilled.route
+  .filter(step => step.type === "ONCHAIN_STEP")
+  .flatMap(step => step.net_effect.produce)
+  .find(p => p.account === "DEST" && p.tx_id)
+  ?.tx_id;
+```
+
+Here is an alternative example that uses for loops
+
+```js
+let txHash;
+
+for (const step of data.fulfilled.route) {
+  if (step.type !== "ONCHAIN_STEP") continue;
+  for (const p of step.net_effect.produce) {
+    if (p.account === "DEST" && p.tx_id) {
+      txHash = p.tx_id;
+      break;
+    }
+  }
+  if (txHash) break;
+}
+```
+
+Here is a stripped-down example of a `COMPLETE` payment status object that contains transaction hashes.
+
+```json
+{
+  "payment_id": "41b16a6f-704e-44ba-9964-2b66df8a73e8",
+  "status": "COMPLETE",
+  "fulfilled": {
+    "output_amount": {
+      "asset": "chain:0xtoken_contract_address",
+      "amount": "0.0911234"
+    },
+    "fees": {},
+    "route": [
+      {
+        "type": "USER_FUND",
+      },
+      {
+        "type": "ONCHAIN_STEP",
+        "status": "COMPLETE",
+        "net_effect": {}
+      },
+      {
+        "type": "ONCHAIN_STEP",
+        "status": "COMPLETE",
+        "net_effect": {
+          "consume": [
+            {
+              "account": "SPW",
+              "resource": { "asset": "chain:0xtoken_contract_address" },
+              "amount": "0.0911234",
+              "tx_id": "0xanother_tx_hash_here"
+            }
+          ],
+          "produce": [
+            {
+              "account": "DEST",
+              "resource": { "asset": "chain:0xtoken_contract_address" },
+              "amount": "0.0911234",
+              "tx_id": "0xfinal_tx_hash_here"
+            }
+          ]
+        }
+      }
+    ],
+  },
+  "owner_chain": "ethereum",
+  "owner_address": "0xowner",
+  "destination_address": "0xdestination"
+}
+```
+
+### Block explorer link
+
+It is conventional to show a resulting public block explorer page to a user that used their onchain wallet with an app. For EVM chains, like Ethereum and its L2s, [Blockscan explorers](https://blockscan.com/) make it simple to find the page using a transaction hash.
+
+A user can be given a simple Blockscan URL after their payment completes onchain. Halliday developers can create this URL using the same payment status object and the transaction hash as seen above. Popular block explorer site information can be fetched from the Halliday API using the `GET /chains` endpoint.
+
+The following is an example response from the chains endpoint.
+
+```json
+{
+  "ethereum": {
+    "chain_id": {
+      "#": "1"
+    },
+    "network": "ethereum",
+    "address_family": "EVM",
+    "native_currency": {
+      "name": "Ether",
+      "symbol": "ETH",
+      "decimals": 18
+    },
+    "is_testnet": false,
+    "explorer": "https://etherscan.io/",
+    "image": "<IMAGE_URL>...",
+    "rpc": "<RPC_URL>..."
+  },
+  "arbitrum": {
+    "chain_id": {
+      "#": "42161"
+    },
+    "network": "arbitrum",
+    "address_family": "EVM",
+    "native_currency": {
+      "name": "Ether",
+      "symbol": "ETH",
+      "decimals": 18
+    },
+    "is_testnet": false,
+    "explorer": "https://arbiscan.io/",
+    "image": "<IMAGE_URL>...",
+    "rpc": "<RPC_URL>..."
+  }
+}
+```
+
+Each block explorer URL can be found in its chain object in the response.
+
+The URL for Blockscan pages (covers most EVM chains) is structured as follows.
+
+```js
+`https://${origin_like_etherscan}/tx/${transaction_hash}`
+```
+
+The payment status object's fulfilled data will contain the name of the output chain which can then be used to select the explorer URL in the chains endpoint response.
+
+This JavaScript code can be used to create the resulting transaction page URL for final step of a user's Halliday Payment.
+
+```js
+async function getExplorerUrl(paymentId) {
+  // See Halliday API endpoints here https://docs.halliday.xyz/api-reference/
+  const halliday = 'https://v2.prod.halliday.xyz';
+  const options = {
+    method: 'GET',
+    headers: {
+      'Authorization': 'Bearer YOUR_API_KEY_HERE',
+      'Content-Type': 'application/json'
+    }
+  };
+  const chains = await (await fetch(`${halliday}/chains`, options)).json();
+  const payment = await (await fetch(`${halliday}/payments?payment_id=${paymentId}`, options)).json();
+
+  if (payment.status === 'COMPLETE') {
+    const transactionHash = payment.fulfilled.route
+      .filter(step => step.type === 'ONCHAIN_STEP')
+      .flatMap(step => step.net_effect.produce)
+      .find(p => p.account === 'DEST' && p.tx_id)
+      ?.tx_id;
+
+    const outputChainName = payment.fulfilled.output_amount.asset.split(':')[0];
+    const explorerUrl = chains[outputChainName].explorer;
+
+    return `${explorerUrl}tx/${transactionHash}`;
+  }
+}
+```

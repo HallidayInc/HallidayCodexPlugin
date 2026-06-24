@@ -1,0 +1,59 @@
+---
+title: Halliday API Documentation
+sidebarTitle: Halliday API Documentation
+public: true
+---
+
+The Halliday API provides direct HTTP access to payment services including onramps, swaps, exchange withdrawals, and offramps.
+It offers complete control over the payment experience through a flexible, API-first integration.
+
+There are two primary ways to integrate Halliday's payment services:
+ - [The Payments Widget](/pages/payments-sdk-docs): Pre-built UI component with complete payment functionality.
+ - [The Halliday API](/pages/halliday-api-docs): Direct API access for building custom payment experiences.
+
+The Halliday API is ideal for developers who need:
+- Full control over the user interface and experience
+- Custom payment flows tailored to specific use cases
+
+## Key Features
+
+- **RESTful Design**: Standard HTTP methods and status codes
+- **API-First Architecture**: No SDK dependencies required
+- **Comprehensive Payment Support**: Onramps, swaps, offramps, and exchange balances
+- **Real-time Status Tracking**: Monitor payments throughout their lifecycle
+- **Flexible Integration**: Works with any programming language or framework
+
+## Getting Started
+
+To begin using the Halliday API:
+
+1. **Obtain API Credentials**: [Get your API key from Halliday](https://halliday.xyz/contact)
+2. **Explore the API**: Review the [API Quickstart](/pages/api-quickstart) guide
+3. **Go Live**: Deploy to production users when ready
+
+## API Endpoints
+
+The Halliday API provides endpoints for:
+
+- **Asset Discovery**: Find supported assets and payment routes
+- **Quote Generation**: Get real-time pricing and optimal routing for payments
+- **Payment Confirmation**: Confirm and initiate payments
+- **Status Tracking**: Monitor payment progress
+- **Fund Management**: Handle deposits and withdrawals
+- **Payment History**: Find past payment executions with granularity
+
+## Authentication
+
+All API requests require authentication via API key:
+
+```bash
+Authorization: Bearer pk_your-api-key-here
+```
+
+For detailed implementation examples, see the [API Quickstart](/pages/api-quickstart) guide. [Get your API key from Halliday here](https://halliday.xyz/contact).
+
+## Method Docs and Playground
+
+After getting an API key, check out the [Haliday Payments REST API endpoint method documentation](/api-reference/chains/get-supported-chains) tab.
+
+This can also be found in the **API Reference** tab at the top of each page.

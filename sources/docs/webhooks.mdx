@@ -1,0 +1,62 @@
+---
+title: Webhooks
+sidebarTitle: Webhooks
+public: true
+---
+
+Webhooks let Halliday notify your backend when a payment workflow finishes, so you don't have to poll for status. You register an HTTPS endpoint once, and Halliday sends it a signed `POST` request whenever a subscribed event occurs.
+
+## When webhooks are sent
+
+A webhook fires when a workflow reaches a terminal state:
+
+| Event type | Sent when the workflow status becomes |
+| --- | --- |
+| `WORKFLOW_COMPLETED` | `COMPLETE` |
+| `WORKFLOW_FAILED` | `FAILED` |
+
+You choose which of these events to subscribe to when you register the webhook. Each delivery is an HTTP `POST` with a JSON body and an `X-Halliday-Signature` header you can use to verify it came from Halliday.
+
+## Authentication
+
+Managing webhooks requires your **secret API key** (`sk_...`), not a public key (`pk_...`). Public keys cannot manage webhooks.
+
+Your secret key is generated in the [Halliday dashboard](https://dashboard.halliday.xyz/) at the moment you create a key set. **It is shown only once, right after you generate the key set — the dashboard never displays it again.** Copy it somewhere safe when you create the key set; if you lose it, you will need to generate a new key set.
+
+Pass the secret key as a bearer token:
+
+```
+Authorization: Bearer sk_HALLIDAY_SECRET_KEY_HERE
+```
+
+## Create a webhook using the API
+
+1. **Get your secret key.** Generate a key set in the [dashboard](https://dashboard.halliday.xyz/) and copy the secret key (`sk_...`) the one time it is shown.
+
+2. **Register your endpoint.** Send a `POST` to `/orgs/webhooks` with the URL Halliday should call, a unique `label`, and the events you want to receive:
+
+```bash
+curl -X POST https://v2.prod.halliday.xyz/orgs/webhooks \
+  -H "Authorization: Bearer sk_HALLIDAY_SECRET_KEY_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://api.yourapp.com/halliday/webhooks",
+    "label": "prod-workflows",
+    "event_types": ["WORKFLOW_COMPLETED", "WORKFLOW_FAILED"]
+  }'
+```
+
+3. **Save the signing secret.** The response includes a `signing_secret`. Like your API key, it is returned only on creation (and rotation), so store it now. Use it to verify the `X-Halliday-Signature` header on each delivery.
+
+```json
+{
+  "id": "4f2c8c1a-1b2c-4d3e-8f5a-6b7c8d9e0f12",
+  "label": "prod-workflows",
+  "url": "https://api.yourapp.com/halliday/webhooks",
+  "signing_secret": "a1b2c3…"
+}
+```
+
+4. **Acknowledge deliveries.** When Halliday `POST`s an event to your URL, respond with any `2xx` status within 10 seconds. Slow or failed deliveries are retried.
+
+For full request and response details, signature verification, and the other management endpoints (list, update, rotate secret, delete), see the [Webhooks API reference](/api-reference/webhooks/register-a-webhook).

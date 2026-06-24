@@ -1,0 +1,36 @@
+---
+title: One-Time Wallet (OTW) or Deposit Address
+sidebarTitle: Deposit Address (OTW)
+public: true
+---
+
+Each unique payment begins with a new onchain address called a **one-time wallet** (OTW) also known as the **deposit address**. The OTW is always different from the payment destination address. The Payments SDK widget UI refers to the OTW as a "one-time wallet" in the delivery details section.
+
+Each onramp or swap will create a new OTW that is controlled only by the **owner wallet address** specified in the API call parameters. In the event a payment gets stuck or is funded after expiration, the owner address has the ability to sign transactions to recover the assets from the OTW or retry the payment.
+
+A payment can be initiated by simply funding the OTW from any address. For fiat onramps specifically, the onramp providers will be instructed to send tokens to the deposit address after the user authorizes their fiat payment.
+
+Using the OTW to encapsulate each unique payment enables the workflow protocol to orchestrate payments in a compliant and non-custodial manner.
+
+### Processing Addresses
+
+Throughout the onchain execution of a payment, tokens may be transferred between addresses that are controlled by the owner wallet address. These addresses are called processing addresses. 
+
+These addresses are used once during a single payment for execution of swaps via DEX, bridging between chains, and more. Each processing address used, including its chain, is detailed in every payment API JSON response body.
+
+Here is an example returned from the payment status or history endpoint under the key `processing_address`:
+
+```json
+[
+  {
+    "chain": "base",
+    "address": "0x9B6454662fA67674b9D15a8d4C49204CbFF81BA1"
+  },
+  {
+    "chain": "megaeth",
+    "address": "0xb09B6d506450Cadd32b0EC588Dd7D980A5e0FC7B"
+  }
+]
+```
+
+The deposit address described in the previous section is included in the collection of processing addresses for a payment. The destination address, which is typically the user's wallet, is not included in the processing addresses.

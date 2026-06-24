@@ -1,0 +1,49 @@
+---
+title: Payment Flows
+sidebarTitle: Payment Flows
+public: true
+---
+
+The Halliday API orchestrates complex payment flows across multiple providers and chains. This page illustrates how funds move through the system for different payment scenarios.
+
+For rapid integrations, a customizable and feature-complete web user interface is available by [implementing the widget](/pages/payments-hello-world) using the Halliday Payments SDK.
+
+For integrations that require deeper granularity see the [Halliday API](/pages/api-quickstart).
+
+## Onramp to any token on any chain
+
+Implementing onramping from fiat to a crypto asset is a challenging endeavor for the developer. Halliday makes this easy by integrating global on and offramp providers and utilizing a noncustodial cross-chain workflow protocol. Workflows can include onramping, offramping, swapping, and even custom actions.
+
+The Payments SDK widget UI features a ramp optimized for conversion with a simple drop-in integration. The following is the order of operations in an onramp workflow using the Halliday API.
+
+- Confirm that there is a valid route for the input and output tokens using the API.
+- Request up-to-date quotes by passing the set of providers to use (Moonpay, Stripe, Coinbase, et al) as well as the input fiat currency and amount to the API.
+- Select a quote returned from the API and accept it by passing the payment ID, state token, owner address and destination address to the API.
+- If the payment output is >= $300 USD and the owner address has not been verified, the response will include a `USER_VERIFY` instruction. The user signs the verification payloads and submits them back to the confirm endpoint before proceeding.
+- The onramp provider checkout URL will be in the response. The user will choose their method of payment, provide payment info, and in their first purchase with the provider, input KYC information. After checkout, the onramp provider will fund the payment with tokens onchain automatically.
+- Poll the status endpoint using the payment ID to monitor the progress of the onramp until it completes onchain.
+
+**See the developer [API quickstart guide](/pages/api-quickstart) to get started building a Halliday payments integration for fiat onramps with payment providers and centralized exchanges.**
+
+## Onchain and cross-chain token swaps
+
+Single and cross-chain swaps are core features of Halliday Payments, enabled by the workflow protocol.
+
+The following is the order of operations of a token swap using the API.
+
+- Confirm that there is a valid route for the input and output tokens using the API.
+- Request up-to-date quotes by passing the input and output tokens as well as the input token amount to the API.
+- Select a quote returned from the API and accept it by passing the payment ID, state token, owner address and destination address to the API.
+- If the payment output is >= $300 USD and the owner address has not been verified, the response will include a `USER_VERIFY` instruction. The user signs the verification payloads and submits them back to the confirm endpoint before proceeding.
+- Using the deposit details in the next instruction, transfer input tokens from the funder to the payment deposit address.
+- Poll the status endpoint using the payment ID to monitor the progress of the swap until it completes onchain.
+
+**See the developer [API quickstart guide](/pages/api-quickstart) to get started building a Halliday payments integration for swaps.**
+
+## Token Recovery and Withdrawal Flows
+
+In some instances, an onramp or swap can fail, in which case the developer can provide options for their user to proceed. An onramp or swap can fail if the output asset has a sudden price change, there is no longer sufficient liquidity in a DEX pool, or an unforeseen onchain state change occurs.
+
+Developers can remedy the situation with a recovery or a withdrawal. A **recovery** resubmits the onramp or swap with a new quote. A **withdrawal** withdraws the input asset from the OTW back to the user's wallet address. Withdrawals support multiple account types and signature methods (`EIP712` via `signTypedData` or `EIP191` via `signMessage`) depending on the chain. **For an in-depth guide on payment retry and withdrawal flows, see the [API Recoveries](/pages/api-error-recovery-withdrawal) page.**
+
+The Halliday Payments widget automatically monitors and provides recovery options for the user in real-time. Developers initializing their workflows with the Halliday API will need to handle these flows using relevant endpoints.
