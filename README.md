@@ -4,10 +4,6 @@ A Codex plugin that gives Codex the context it needs to help developers integrat
 [Halliday Payments](https://halliday.xyz) (crypto deposits, fiat-to-crypto onramps,
 cross-chain swaps).
 
-> This repository is generated and published automatically from
-> [HallidayAgent](https://github.com/HallidayInc/HallidayAgent). Do not edit it directly —
-> changes belong in `HallidayAgent` (the skill source, the `codex-root/` overlay, and the docs submodule).
-
 ## What it does
 
 - Provides the `halliday` skill with a guided menu of flows:
