@@ -1,6 +1,6 @@
 {
   "name": "halliday-payments",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Halliday Payments integration for crypto deposits, fiat-to-crypto onramps, and cross-chain swaps.",
   "author": {
     "name": "Halliday Inc.",

@@ -21,6 +21,32 @@ cross-chain swaps).
 - Queries the live Halliday API for supported chains, assets, routes, payment status, payment
   history, and OTW wallet balances via an allowlisted wrapper script
 
+## Install
+
+This repository is a Codex plugin marketplace — no clone needed; `codex plugin marketplace add`
+fetches it for you. Add the marketplace, then install the plugin:
+
+```bash
+codex plugin marketplace add HallidayInc/HallidayCodexPlugin
+codex plugin add halliday-payments@halliday
+```
+
+Start a new `codex` session to pick up the skill, then invoke it with `$halliday` or just ask a
+Halliday question.
+
+**Update** to the latest version (then start a new session):
+
+```bash
+codex plugin marketplace upgrade
+codex plugin add halliday-payments@halliday
+```
+
+**Uninstall:**
+
+```bash
+codex plugin remove halliday-payments@halliday
+```
+
 ## Usage
 
 **Ask questions directly** — the skill activates on its own when your conversation involves

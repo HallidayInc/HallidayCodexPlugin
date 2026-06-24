@@ -1,0 +1,20 @@
+{
+  "name": "halliday",
+  "interface": {
+    "displayName": "Halliday"
+  },
+  "plugins": [
+    {
+      "name": "halliday-payments",
+      "source": {
+        "source": "local",
+        "path": "./plugins/halliday-payments"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
