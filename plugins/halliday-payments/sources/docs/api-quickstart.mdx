@@ -4,7 +4,7 @@ sidebarTitle: API Quickstart
 public: true
 ---
 
-Halliday Payments is a unified deposits API combining a global on/off ramp network, cross-chain swap router, and centralized exchange connector into a single product.
+Halliday is a unified deposits API combining a global on/off ramp network, cross-chain swap router, and centralized exchange connector into a single product.
 
 The REST API is available to developers building custom user interfaces on any device.
 
@@ -30,9 +30,9 @@ A payment can be initiated by simply funding the OTW from any address. For fiat 
 
 ## Discovering Available Assets
 
-Halliday Payments supports hundreds of crypto assets for fiat onramps from centralized exchanges and payment providers, as well as onchain swaps via bridges and DEXs.
+Halliday supports hundreds of crypto assets for fiat onramps from centralized exchanges and payment providers, as well as onchain swaps via bridges and DEXs.
 
-Before initalizing a payment, use this endpoint to see which crypto assets are supported.
+Before initializing a payment, use this endpoint to see which crypto assets are supported.
 
 ### Get All Supported Assets
 
@@ -455,7 +455,7 @@ The response confirms that USDC on Base and AVAX on Avalanche can be obtained fr
 
 ## Fiat-to-Crypto Onramping with the API
 
-Halliday Payments supports fiat onramp providers like Stripe, Moonpay, Transak and cryptocurrency exchanges (CEX) to enable users to compliantly onramp using fiat in their region with the best price available.
+Halliday supports fiat onramp providers like Stripe, Moonpay, Transak and cryptocurrency exchanges (CEX) to enable users to compliantly onramp using fiat in their region with the best price available.
 
 This enables end users to pay with credit or debit card, Apple Pay, Google Pay, or a centralized exchange balance with one simple interface.
 
@@ -467,7 +467,7 @@ The Halliday API queries onramp providers to create quotes for the delivery of t
 
 Additional checks are performed to identify if bridge and DEX calls are necessary to deliver the desired output token. All quoted routes are returned to the client with fees included.
 
-This data can then be dispalyed in a UI so the user can select the their preferred provider and quote.
+This data can then be displayed in a UI so the user can select their preferred provider and quote.
 
 All quotes can be requested through the unified `POST /payments/quotes` endpoint.
 
@@ -972,7 +972,7 @@ end
 
 ## Cross-chain swaps with the API
 
-Halliday Payments brings together bridges, DEXs, and cross-chain routing logic to enable users to seamlessly swap to any token on any chain.
+Halliday brings together bridges, DEXs, and cross-chain routing logic to enable users to seamlessly swap to any token on any chain.
 
 ### Get a collection of quotes for a swap
 
@@ -980,7 +980,7 @@ When a user is ready to swap tokens, make an API request to generate quotes base
 
 The Halliday API queries all available cross-chain routes supported by the protocol, optimizing current bridge, DEX, and transfer fees. All quoted onchain routes are returned to the client, including all fees.
 
-This data can then be dispalyed in a UI so the user can select the their preferred route and quote.
+This data can then be displayed in a UI so the user can select their preferred route and quote.
 
 All quotes are requested through the unified `POST /payments/quotes` endpoint.
 

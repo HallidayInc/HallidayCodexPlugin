@@ -4,13 +4,18 @@ sidebarTitle: Supported Payment Methods
 public: true
 ---
 
+import { SupportedChainsTable } from '/snippets/SupportedChainsTable.jsx';
+import { SupportedTokensTable } from '/snippets/SupportedTokensTable.jsx';
+
 Halliday supports crypto assets as input and output for payments. Supported crypto assets can be found by querying the `/assets` [endpoint of the API](/api-reference/assets/get-asset-details).
 
 Get an API key for free in the [Halliday Dashboard](https://dashboard.halliday.xyz/).
 
 Specific payment [route support from input asset to output asset](https://docs.halliday.xyz/api-reference/assets/get-available-input-assets-for-a-given-output-asset) can also be checked using the API.
 
-## Fiat Onramp Support
+Reach out to the team directly at partnerships@halliday.xyz to request additional support for fiat currencies, tokens, or chains.
+
+## Fiat Onramp Support By Geolocation
 
 Fiat onramp support is enabled by several onramp providers. The following information is based on payment method support information collected from provider documentation. Note that Crypto.com onramp support is currently in beta.
 
@@ -30,3 +35,15 @@ Fiat onramp support is enabled by several onramp providers. The following inform
 | Singapore | SGD | Card | Coinbase |
 | Australia | AUD | Card | Coinbase |
 | Vietnam | VND | Card | Binance |
+
+## Supported Chains
+
+The following blockchains are supported by Halliday:
+
+<SupportedChainsTable />
+
+## Supported Tokens
+
+All supported tokens are available as a destination token for fiat onramps and swaps.
+
+<SupportedTokensTable />

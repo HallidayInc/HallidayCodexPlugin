@@ -1,28 +1,26 @@
 ---
-title: Halliday Payments SDK Widget Documentation
-sidebarTitle: Payments SDK Documentation
+title: Halliday JS SDK Widget Documentation
+sidebarTitle: SDK Documentation
 public: true
 ---
 
-The Halliday Payments Widget allows users to perform onramps, swaps, and exchange withdrawals to or from any chain or token with minimal integration effort.
+The Halliday JS SDK widget allows users to perform onramps, swaps, and exchange withdrawals to or from any chain or token with minimal integration effort.
 
-It provides the most rapid integration of Halliday Payments with a feature-rich configuration.
+It provides the most rapid integration of Halliday with a feature-rich configuration.
 
 To have more fine-grained control over the user interface, review the [Halliday API](/pages/halliday-api-docs) documentation.
 
-To use the Halliday SDK, first get a free API key at [dashboard.halliday.xyz](https://dashboard.halliday.xyz/).
+To use the Halliday JS SDK, first get a free API key at [dashboard.halliday.xyz](https://dashboard.halliday.xyz/).
 
 ---
 
-## Try the Halliday Payments SDK Widget
+## Try the Halliday JS SDK Widget
 
-Following this guide, or the [Payments Hello World](/pages/payments-hello-world) guide will result in an onramp experience like the following.
+Following this guide, or the [Payments Hello World](/pages/payments-hello-world) guide will result in an experience like the following demo.
 
-Try out onramping to an external wallet with this button:
+import { OpenHallidayDemoPage } from '/snippets/OpenHallidayDemoPage.jsx';
 
-import { OnrampWithWalletConnector } from '/snippets/OnrampWithWalletConnector.jsx';
-
-<OnrampWithWalletConnector />
+<OpenHallidayDemoPage />
 
 ## Installation
 
@@ -44,12 +42,19 @@ Install the Payments SDK, which is available on NPM.
 Next the SDK can be imported into a front-end TypeScript or JavaScript project.
 
 ```typescript copy
-import { openHallidayPayments } from '@halliday-sdk/payments'
+import {
+  initializeClient,
+  openHallidayPayments,
+} from '@halliday-sdk/payments'
 ```
 
 ## Initialization Options
 
-The `openHallidayPayments` function opens the Halliday Payments widget and accepts the following configuration options:
+The `initializeClient` function initializes the Halliday JS SDK instance and prepares the widget interface to subsequently be opened and displayed to the user.
+
+To open the SDK widget interface, like in a deposit button click event handler, use the `openHallidayPayments` function. More on the deposit button pattern in the [SDK Deposits](/pages/sdk-deposits) section.
+
+Both `initializeClient` and `openHallidayPayments` accept the following configuration options.
 
 | Name                              | Type     | Description                                                                                                        |
 | :-------------------------------- | :------- | :----------------------------------------------------------------------------------------------------------------- |
@@ -194,13 +199,13 @@ openHallidayPayments({
 ---
 ### Using a connected wallet
 
-The Halliday SDK can accept an existing wallet connection object that an app has already established.
+The Halliday JS SDK can accept an existing wallet connection object that an app has already established.
 
 With this flow, users do not need to reconnect their wallet using the Halliday external wallet modal, creating an optimal user experience for Web3 applications.
 
 If the application does not already have a connected wallet, see [using the wallet connector](#using-the-wallet-connector).
 
-Support for existing Viem, Wagmi, and Ethers.js wallet connections are available to Halliday SDK developers. These functions also allow the widget to utilize the proper account if the user switches the address or network in their wallet extension.
+Support for existing Viem, Wagmi, and Ethers.js wallet connections are available to Halliday JS SDK developers. These functions also allow the widget to utilize the proper account if the user switches the address or network in their wallet extension.
 
 ```ts copy
 // For Viem or Wagmi
@@ -308,7 +313,7 @@ const connect = async () => {
 
 #### Dynamic
 
-The following code example is a demonstration of passing a Dynamic embedded wallet provider to the Halliday SDK in a full React app which is available in the [SDK example apps section](/pages/payments-sdk-example-apps).
+The following code example is a demonstration of passing a Dynamic embedded wallet provider to the Halliday JS SDK in a full React app which is available in the [SDK example apps section](/pages/payments-sdk-example-apps).
 
 ```jsx
 import { useDynamicContext, useIsLoggedIn } from '@dynamic-labs/sdk-react-core'
@@ -357,7 +362,7 @@ export default App
 ```
 #### Privy
 
-In addition to the following code example, a demonstration of passing a connected Privy wallet to the Halliday SDK in a full React app is available in the [SDK example apps section](/pages/payments-sdk-example-apps).
+In addition to the following code example, a demonstration of passing a connected Privy wallet to the Halliday JS SDK in a full React app is available in the [SDK example apps section](/pages/payments-sdk-example-apps).
 
 ```jsx
 import { openHallidayPayments } from '@halliday-sdk/payments'
@@ -397,16 +402,18 @@ export default Component
 
 #### Turnkey
 
-Turnkey embedded wallet signatures can be integrated with the Halliday SDK using the 
-`@turnkey/react-wallet-kit` and `@turnkey/viem` SDKs with `viem` and `@halliday-sdk/payments`. The developer is required to create an interface for the Turnkey SDK. A full React.js code example is available here: [Halliday SDK Turnkey React.js Example](https://github.com/HallidayInc/HallidaySdkTurnkeyReactExample).
+Turnkey embedded wallet signatures can be integrated with the Halliday JS SDK using the 
+`@turnkey/react-wallet-kit` and `@turnkey/viem` SDKs with `viem` and `@halliday-sdk/payments`. The developer is required to create an interface for the Turnkey SDK. A full React.js code example is available here: [Halliday JS SDK Turnkey React.js Example](https://github.com/HallidayInc/HallidaySdkTurnkeyReactExample).
 
-### Preloading the Widget
+### Initializing the widget before showing
 
-For the best user experience, the widget can be preloaded so it appears instantly when shown.
+For the best user experience, the widget can be preloaded so it appears instantly when it is ready to be shown.
 
 The `initializeClient` call should be done in the initial loading phase of the app.
 
-Later, the `openHallidayPayments` call can be executed once the widget user interface is ready to be shown to the user.
+Later, the `openHallidayPayments` call can be executed once the widget user interface is ready to be shown to the user, like when a deposit button is clicked or tapped.
+
+Both the `initializeClient` and `openHallidayPayments` functions can have the same configuration parameters passed to them.
 
 If an `initializeClient` call is made with all of the necessary parameters passed to it, the subsequent call to `openHallidayPayments` can be done without including any parameters.
 
@@ -596,4 +603,4 @@ Colors in the above code and diagram:
 
 For further customization, please [contact the Halliday team](mailto:partnerships@halliday.xyz).
 
-Building a completely custom user interface is possible by implementing the [Halliday API](/pages/halliday-api-docs), instead of the Halliday SDK.
+Building a completely custom user interface is possible by implementing the [Halliday API](/pages/halliday-api-docs), instead of the Halliday JS SDK.

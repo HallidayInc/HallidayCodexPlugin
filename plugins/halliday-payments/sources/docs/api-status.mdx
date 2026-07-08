@@ -93,9 +93,11 @@ If the user abandons before completing verification, the payment is not persiste
 
 The `status` property in the JSON response object is a string indicating the present status of the payment. Each of the following statuses can be returned for an onramp or swap payment.
 
+The `PENDING`, `WITHDRAW_PENDING`, and `UNCONFIRMED` statuses indicate that a payment is still in progress, so a front end application should continue polling `GET /payments` for status updates while a payment is in any of these states. All other statuses indicate that the payment is halted and polling can stop. A halted status is not necessarily terminal, however — further action can still change it. For example, a payment that becomes `EXPIRED` and is then funded can be withdrawn, transitioning its status to `WITHDRAWN`.
+
 ### Pending
 
-The `PENDING` status is the inital state of a confirmed payment. This state indicates that the payment is ready to be funded.
+The `PENDING` status is the initial state of a confirmed payment. This state indicates that the payment is ready to be funded.
 
 The specified onchain steps begin executing once the OTW (deposit address) is issued the proper amount of tokens on the proper chain.
 
@@ -126,6 +128,10 @@ A payment can be safely abandoned if it becomes `EXPIRED`, before it is funded, 
 Withdrawal requires creation of an EIP-712 signature which the API can use to execute the transfer.
 
 For more information on withdrawals and payment recoveries see the [Payment API Errors & Recoveries](/pages/api-error-recovery-withdrawal) guide.
+
+### Withdraw Pending
+
+The `WITHDRAW_PENDING` status indicates that a withdrawal of the payment's funds is in progress while the payment has not reached completion. Once the withdrawal transfer out of the OTW deposit address is confirmed, the status transitions to `WITHDRAWN`.
 
 ### Withdrawn
 

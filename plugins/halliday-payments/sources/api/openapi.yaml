@@ -2095,21 +2095,6 @@ components:
                 $ref: "#/components/schemas/Token"
                 description: Token identifier to query at the wallet address.
                 example: "ethereum:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-        near_queries:
-          type: array
-          description: Near wallet and token combinations to query.
-          items:
-            type: object
-            required:
-              - address
-              - token
-            properties:
-              address:
-                type: string
-                description: Near wallet address to query.
-              token:
-                $ref: "#/components/schemas/Token"
-                description: Token identifier to query at the wallet address.
 
     PaymentBalancesResult:
       type: object
@@ -2292,7 +2277,7 @@ components:
           description: Organization identifier
         status:
           type: string
-          enum: [PENDING, COMPLETE, FAILED, EXPIRED, WITHDRAWN, TAINTED, UNCONFIRMED]
+          enum: [PENDING, COMPLETE, FAILED, EXPIRED, WITHDRAW_PENDING, WITHDRAWN, TAINTED, UNCONFIRMED]
         funded:
           type: boolean
           description: Whether the payment has been funded

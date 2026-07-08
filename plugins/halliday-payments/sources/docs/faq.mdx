@@ -4,25 +4,27 @@ sidebarTitle: FAQ
 public: true
 ---
 
-#### What is Halliday Payments?
+## Halliday General FAQ
 
-Halliday Payments is a non-custodial, unified crypto payment flow that can be implemented by developers using only 7 lines of code. It orchestrates three different product categories – onramps, centralized exchanges, and bridges – into a single app, simplifying the experience for users and allowing them to get their first dollar onchain in less than a minute.
+### What is Halliday?
 
-#### How does it work?
+Halliday is a non-custodial, unified crypto payment flow that can be implemented by developers using only 7 lines of code. It orchestrates three different product categories – onramps, centralized exchanges, and bridges – into a single app, simplifying the experience for users and allowing them to get their first dollar onchain in less than a minute.
 
-Halliday Payments is built on the [Workflow Protocol](https://halliday.xyz/protocol), which is used to streamline blockchain development. Depending on the chain, traditional onramp providers may not be able to access liquidity, leaving users to figure out the best path on their own – a process that can take up to 30 minutes or more.
+### How does it work?
 
-Halliday Payments simplifies this process by offering seamless interoperability across different blockchain networks, ensuring users can easily deposit without having to navigate across different platforms. Halliday uses a broad network of [integrations and support](https://halliday.xyz/ecosystem) to create interoperability no matter the starting token or geographic location, creating a truly Web2-like experience. 
+Halliday is built on the [Workflow Protocol](https://halliday.xyz/protocol), which is used to streamline blockchain development. Depending on the chain, traditional onramp providers may not be able to access liquidity, leaving users to figure out the best path on their own – a process that can take up to 30 minutes or more.
 
-#### What is a one-time wallet (OTW)?
+Halliday simplifies this process by offering seamless interoperability across different blockchain networks, ensuring users can easily deposit without having to navigate across different platforms. Halliday uses a broad network of [integrations and support](https://halliday.xyz/ecosystem) to create interoperability no matter the starting token or geographic location, creating a truly Web2-like experience. 
+
+### What is a one-time wallet (OTW)?
 
 Each unique payment begins with a new onchain address called a one-time wallet (OTW), also known as the deposit address or a single-program wallet (SPW). Each onramp or swap will create a new OTW that is controlled only by the owner wallet address specified in the API call parameters. In the event a payment gets stuck or is funded after expiration, the owner address has the ability to sign transactions to recover the assets from the OTW or retry the payment.
 
 End users control the OTW - Halliday never takes custody or control of user funds.
 
-#### What can Halliday Payments be used for?
+### What can Halliday be used for?
 
-Halliday Payments is extremely flexible and can be utilized for a number of different business uses. This includes, but is not limited to:
+Halliday is extremely flexible and can be utilized for a number of different business uses. This includes, but is not limited to:
 
 - Blockchains: Simple deposit to a specific token, expanding access to liquidity
 - Perps: Swap and stake automatically
@@ -33,16 +35,100 @@ Halliday Payments is extremely flexible and can be utilized for a number of diff
 
 The Workflow Protocol enables quick cross-chain development. Have an idea for a custom use case? Reach out to [partnerships@halliday.xyz](mailto:partnerships@halliday.xyz)
 
-## How to use Halliday Payments
+### Is there slippage or other fees for onramping to USDC?
+
+Fees for USDC onramps differ based on the onramp provider that the user selects at the time of an onramp (Stripe, Coinbase, et al), and the blockchain in which the USDC onramp initially occurs.
+
+Coinbase has no onramp fees for USDC. Stripe has a percentage fee that differs based on the fiat source.
+
+Users will see different onramp providers available to them based on their assumed jurisdiction when their onramp quote is created.
+
+Blockchains like Base have zero transfer fees for USDC whereas Ethereum mainnet will have relatively high gas costs for transfers.
+
+If the chain of the onramp destination address does not have a native USDC deployment, the USDC will be bridged from a chain that does, which will add to the total fees the user pays.
+
+For blockchains with native USDC, Halliday implements Circle's CCTP for bridging which has lower fees that are posted on Circle's website.
+
+### Does bridging rely on liquidity pools or bypass it via native USDC bridging?
+
+Halliday supports several token bridges including Circle CCTP. Depending on the destination token of a payment, a supported bridge will be included in a quoted path.
+
+Quotes presented to the user at the time of a payment are ordered by the highest output quote first.
+
+### What caveats are there for non-USD onramps?
+
+Depending on a user's bank, there may be an FX charge if the fiat onramp charge is in a different currency from the user's account.
+
+Users have experienced that banks may create friction with card payments for onramps, usually with declined charges.
+
+These policies are set and controlled by the user's bank. There may be different results with different onramp providers.
+
+Debit cards tend to have higher success rates than credit cards.
+
+### Which Centralized Exchanges (CEXs) are currently supported for direct withdrawals to a blockchain?
+
+Any CEX that supports sending major tokens, such as USDC on Ethereum, to an EOA can be used to directly send assets via Halliday.
+
+The initial blockchain in which the USDC withdrawal occurs may be different from the destination blockchain. Halliday's automated workflows will execute the interim bridging and swapping onchain from input token to output token. 
+
+With a single interaction, the user will receive the output token in their wallet shortly after completing the transaction.
+
+Fees for bridging, DEX swaps, and onchain gas consumption are included in the quote the user confirms. These fees vary by onchain route and the present onchain conditions. Fees that users pay can optionally be covered by clients. Reach out to the Halliday team to enable this.
+
+### Does the widget support bundled "Onramp/Withdrawal + Swap" actions?
+
+Example: a user withdraws USDC from a CEX or pays with a credit /debit card, and automatically receives tokens on a blockchain.
+
+Yes, Halliday workflows were made for this purpose. A payment is funded by the onramp provider or CEX after the user completes a checkout.
+
+Once the workflow is funded (usually by USDC) the necessary bridging and DEX operations are executed automatically and the user gets the output token in their wallet.
+
+Halliday can have a destination address set per payment, which is usually the user's wallet address or app account address.
+
+Liquidity can be sourced from bridges, DEXes, or by minting if applicable.
+
+### What is the fee structure for using your onramp / CEX withdrawal services?
+
+Halliday does not charge a fee via the onramp or CEX. Halliday only charges a fee for completion of on-chain delivery of funds. These amounts can be paid by the client, should they want to enable 1:1 deposits for their end users.
+
+## Adding Token Support
+
+### What does Halliday need in order to support deposits to a new token on a supported chain?
+
+The team at Halliday can add support for new tokens on blockchains that are already supported (see `/chains` API endpoint or [Supported Chains section](/pages/payment-method-support#supported-chains)).
+
+The following is the required information for adding support for new tokens:
+
+- Token contract address
+- Token symbol (e.g. BTC, ETH, SOL)
+- Chain name and chain ID in which the token is deployed
+- Specific liquidity sources such as DEX pool addresses, wrapper contract addresses, or mint contract addresses
+- Coingecko API ID and Coingecko icon image URL
+- Applicable bridges and their contract addresses if cross-chain routing is required
+
+### What does Halliday need in order to support deposits to a new token on an unsupported chain?
+
+New chains can become supported by the Halliday API. The following information is required for supporting a new chain:
+
+- Chain name and chain ID
+- Names of the bridges that the chain supports
+- Addresses of supported bridge contracts
+- Block explorer website information (e.g. https://etherscan.io/)
+- RPC server address information
+- Hardfork information (if EVM)
+- Approximate block confirmation time in seconds
+- Wallet and transaction signature type information (if non-EVM)
+
+## On/Offramp Help
 
 ### Onramps
 
-#### How can users onramp from fiat using Halliday Payments?
+#### How can users onramp from fiat using Halliday?
 
 The onramp service is designed to integrate effortlessly with existing blockchain applications, providing fast, secure, and reliable onramping from fiat currencies.
 
 To integrate the onramp service into an app, there are two main options:
-- The Halliday Payments Widget: Easiest way to add a feature-complete UI for enabling onramps.
+- The Halliday JS SDK widget: Easiest way to add a feature-complete UI for enabling onramps.
 - The Halliday API: Completely controls the user experience using direct API integration.
 
 Reach out to [partnerships@halliday.xyz](mailto:partnerships@halliday.xyz) to learn more and get access.
@@ -54,7 +140,7 @@ Reach out to [partnerships@halliday.xyz](mailto:partnerships@halliday.xyz) to le
 The cross-chain swaps service is designed to integrate effortlessly with existing blockchain applications, providing fast, secure, and reliable swaps for digital asset holders.
 
 To integrate the cross-chain swaps service into an app, there are two main options:
-- The Halliday Payments Payments Widget: Easiest way to add a feature-complete UI for enabling swaps.
+- The Halliday JS SDK Widget: Easiest way to add a feature-complete UI for enabling swaps.
 - The Halliday API: Completely controls the user experience using HTTP directly.
 
 Reach out to partnerships@halliday.xyz to learn more and get access.
@@ -70,7 +156,7 @@ This feature is ideal for users looking to acquire any token on any chain, or to
 
 This feature is designed to integrate effortlessly with existing blockchain applications, providing fast, secure, and reliable onramping from their centralized exchange accounts.
 
-To integrate this feature in an app, use the Halliday Payments Payments Widget.
+To integrate this feature in an app, use the Halliday JS SDK Widget.
 
 #### What if the user does not have enough of the desired token in their exchange account to afford the transfer?
 
@@ -82,6 +168,8 @@ The exchange service supports two methods of supplementing the user's balance:
 
 #### How can my users offramp to fiat?
 
-Halliday Payments is working on an offramp service designed to integrate effortlessly with existing apps, providing fast, secure, and reliable offramping to fiat currencies.
+The Halliday team is working on an offramp service designed to integrate effortlessly with existing apps, providing fast, secure, and reliable offramping to fiat currencies.
 
-[Get in touch](https://halliday.xyz/contact) to learn more.
+### Where can I find geographic availability for on & offramping? 
+
+This information is available on the [Supported Payment Methods](/pages/payment-method-support) page.

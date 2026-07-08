@@ -1,34 +1,32 @@
 ---
-title: Payments Hello World
-sidebarTitle: Payments Hello World
+title: SDK Widget Hello World
+sidebarTitle: Hello World
 public: true
 ---
-The fastest way to implement Halliday Payments is by utilizing the widget user interface.
+The fastest way to implement Halliday is by utilizing the JS SDK widget user interface.
 
-## Try the Halliday Payments SDK Widget
+## Try the Halliday JS SDK Widget
 
-Following this guide, or the [Widget Documentation](/pages/payments-sdk-docs) guide will result in an onramp expeirence like the following.
+Following this guide, or the [JS SDK Widget Documentation](/pages/payments-sdk-docs) guide will result in an onramp experience like in the following demo.
 
-Try out onramping to an external wallet with this button:
+import { OpenHallidayDemoPage } from '/snippets/OpenHallidayDemoPage.jsx';
 
-import { OnrampWithWalletConnector } from '/snippets/OnrampWithWalletConnector.jsx';
+<OpenHallidayDemoPage />
 
-<OnrampWithWalletConnector />
+### Integrate Halliday
 
-### Integrate Halliday Payments
-
-Follow these steps to integrate Halliday Payments in just a few minutes.
+Follow these steps to integrate Halliday in just a few minutes.
 
 <Steps>
 <Step title="Obtain API Keys">
 <Note>
-To get set up with API access for Halliday Payments, get a free API key at [dashboard.halliday.xyz](https://dashboard.halliday.xyz/).
+To get set up with API access for Halliday, get a free API key at [dashboard.halliday.xyz](https://dashboard.halliday.xyz/).
 </Note>
 </Step>
 
 <Step title="Integrate">
 
-First, install the Halliday Payments SDK into a web project.
+First, install the Halliday JS SDK into a web project.
 
 <Tabs>
   <Tab title="npm">
@@ -48,7 +46,7 @@ First, install the Halliday Payments SDK into a web project.
   </Tab>
 </Tabs>
 
-Next, integrate Halliday Payments into an existing application with a few lines of code. This example is in a React.js project with [Wagmi](https://wagmi.sh/).
+Next, integrate Halliday into an existing application with a few lines of code. This example is in a React.js project with [Wagmi](https://wagmi.sh/).
 
 <Tabs>
   <Tab title="React">
@@ -115,7 +113,7 @@ Next, integrate Halliday Payments into an existing application with a few lines 
   </Tab>
 </Tabs>
 
-Run the app page and try onramping or swapping tokens with the newly implemented Halliday Payments Payments Widget. Try it now using the **button** above.
+Run the app page and try onramping or swapping tokens with the newly implemented Halliday Payments Widget. Try it now using the **button** above.
 
 </Step>
 </Steps>
